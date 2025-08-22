@@ -57,12 +57,12 @@ async function persistIlspyEnv(resolvedPath) {
 export async function resolveIlspycmd() {
   // 1) explicit env override
   const envPath = process.env.ILSPY_CMD;
-  if (envPath && await exists(envPath)) return envPath;
+  if (envPath && await exists(envPath)) { return envPath; }
 
   // 2) project local tool under ./tools
   const toolsDir = path.join(process.cwd(), 'tools');
   const localBin = path.join(toolsDir, isWindows() ? 'ilspycmd.exe' : 'ilspycmd');
-  if (await exists(localBin)) return localBin;
+  if (await exists(localBin)) { return localBin; }
 
   // 3) try global PATH first
   try {
