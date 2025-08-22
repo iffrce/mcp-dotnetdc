@@ -21,7 +21,7 @@ A Model Context Protocol (MCP) server that decompiles .NET assemblies (.dll/.exe
 - Node.js 16+
 - .NET SDK
 - ilspycmd
-  - Resolution order: `ILSPY_CMD` env var > project-local `./tools/ilspycmd` > `ilspycmd` on PATH > attempt local install via `dotnet tool` into `./tools`
+  - Resolution order: `ILSPY_CMD` env var > project-local `./.mcp-dotnetdc/tools/ilspycmd` > `ilspycmd` on PATH > attempt local install via `dotnet tool` into `./.mcp-dotnetdc/tools`
   - Optional global install: `dotnet tool install -g ilspycmd`
 
 ## Run
@@ -154,7 +154,7 @@ mcp-dotnetdc
 
 ### .env support
 
-From v0.1.4, the server loads environment variables from a `.env` file at process startup via `dotenv`.
+From v0.1.7, the server loads environment variables from project root `.env` and additionally `./.mcp-dotnetdc/.env` at startup (no external dotenv dependency required).
 
 Example `.env`:
 
@@ -182,7 +182,7 @@ MAX_CONCURRENCY=4
 
 ## Notes
 
-- Automatically resolves and ensures `ilspycmd` availability. If missing, the server attempts to install it as a local tool into `./tools`.
+- Automatically resolves and ensures `ilspycmd` availability. If missing, the server attempts to install it as a local tool into `./.mcp-dotnetdc/tools`.
 - Text output concatenates all produced `.cs`/`.il` files (with relative file headers as needed). Directory-writing tools return file lists and simple stats.
 
 ## Compatibility & platforms
@@ -205,7 +205,7 @@ MAX_CONCURRENCY=4
 - "could not determine executable to run"?
   - Do not run `npx install -g ...`. That tries to execute a package named `install`. Use `npx -y -p @iffrce/mcp-dotnetdc -- mcp-dotnetdc` instead.
 - How to specify the ilspycmd path?
-  - Set `ILSPY_CMD=/absolute/path/to/ilspycmd`, or ensure `ilspycmd` is on PATH. If missing, the tool attempts a local install into `./tools`.
+  - Set `ILSPY_CMD=/absolute/path/to/ilspycmd`, or ensure `ilspycmd` is on PATH. If missing, the tool attempts a local install into `./.mcp-dotnetdc/tools`.
 - How to pin an npx version?
   - `npx -y -p @iffrce/mcp-dotnetdc@0.1.4 -- mcp-dotnetdc`
 
