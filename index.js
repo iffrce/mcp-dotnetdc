@@ -1,17 +1,4 @@
 #!/usr/bin/env node
-
-import * as path from 'path';
-import * as fs from 'fs/promises';
-import 'dotenv/config';
-// Additionally load ./.mcp-dotnetdc/.env if present
-try {
-  const extraEnv = path.join(process.cwd(), '.mcp-dotnetdc', '.env');
-  const content = await fs.readFile(extraEnv, 'utf8');
-  for (const line of content.split(/\r?\n/)) {
-    const m = /^(\w+)=(.*)$/.exec(line.trim());
-    if (m) process.env[m[1]] = m[2];
-  }
-} catch {}
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import * as os from 'os';
@@ -23,6 +10,26 @@ import { createInMemoryCache } from './cache.js';
 import { createServer } from './server.js';
 import { createExecLimiter, decompileAndSplit, extractNamespaces } from './decompiler.js';
 import { resolveIlspycmd } from './ilspy.js';
+
+// Load .env files manually (avoid hard dependency on dotenv)
+try {
+  const rootEnv = path.join(process.cwd(), '.env');
+  const content = await fs.readFile(rootEnv, 'utf8');
+  for (const line of content.split(/\r?\n/)) {
+    const m = /^(\w+)=(.*)$/.exec(line.trim());
+    if (m) process.env[m[1]] = m[2];
+  }
+} catch {}
+
+// Additionally load ./.mcp-dotnetdc/.env if present (after imports so path/fs are available)
+try {
+  const extraEnv = path.join(process.cwd(), '.mcp-dotnetdc', '.env');
+  const content = await fs.readFile(extraEnv, 'utf8');
+  for (const line of content.split(/\r?\n/)) {
+    const m = /^(\w+)=(.*)$/.exec(line.trim());
+    if (m) process.env[m[1]] = m[2];
+  }
+} catch {}
 
 const withConcurrencyLimit = await withConcurrencyLimitFactory(MAX_CONCURRENCY);
 const { maybeCached } = createInMemoryCache(CACHE_TTL_MS);
