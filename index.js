@@ -11,6 +11,7 @@ import { execAsync, withConcurrencyLimitFactory, buildKey } from './utils.js';
 import { createInMemoryCache } from './cache.js';
 import { createServer } from './server.js';
 import { createExecLimiter, decompileAndSplit, extractNamespaces } from './decompiler.js';
+import { resolveIlspycmd } from './ilspy.js';
 
 const withConcurrencyLimit = await withConcurrencyLimitFactory(MAX_CONCURRENCY);
 const { maybeCached } = createInMemoryCache(CACHE_TTL_MS);
@@ -29,13 +30,14 @@ class DecompilerService {
         args.push(`-t "${typeName}"`);
       }
 
-      const cmd = `ilspycmd ${args.join(' ')} "${assemblyPath}"`;
+      const ilspy = await resolveIlspycmd();
+      const cmd = `${ilspy} ${args.join(' ')} "${assemblyPath}"`;
 
       try {
         await execPromise(cmd);
       } catch (err) {
         throw new Error(
-          `Failed to run ilspycmd. Ensure .NET SDK is installed and ilspycmd is available. Install via: 'dotnet tool install -g ilspycmd'. Detail: ${err.message}`
+          `ilspycmd not available or failed to run. Please install .NET SDK and ilspycmd (dotnet tool install -g ilspycmd), then re-run this MCP tool. Do not call ilspycmd directly. Detail: ${err.message}`
         );
       }
 
@@ -89,13 +91,13 @@ class DecompilerService {
       if (typeName) {
         args.push(`-t "${typeName}"`);
       }
-
-      const cmd = `ilspycmd ${args.join(' ')} "${assemblyPath}"`;
+      const ilspy = await resolveIlspycmd();
+      const cmd = `${ilspy} ${args.join(' ')} "${assemblyPath}"`;
       try {
         await execPromise(cmd);
       } catch (err) {
         throw new Error(
-          `Failed to run ilspycmd. Ensure .NET SDK is installed and ilspycmd is available. Install via: 'dotnet tool install -g ilspycmd'. Detail: ${err.message}`
+          `ilspycmd not available or failed to run. Please install .NET SDK and ilspycmd (dotnet tool install -g ilspycmd), then re-run this MCP tool. Do not call ilspycmd directly. Detail: ${err.message}`
         );
       }
 

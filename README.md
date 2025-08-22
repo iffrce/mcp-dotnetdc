@@ -154,7 +154,7 @@ mcp-dotnetdc
 
 ### .env support
 
-From v0.1.3, the server loads environment variables from a `.env` file at process startup via `dotenv`.
+From v0.1.4, the server loads environment variables from a `.env` file at process startup via `dotenv`.
 
 Example `.env`:
 
@@ -207,7 +207,7 @@ MAX_CONCURRENCY=4
 - How to specify the ilspycmd path?
   - Set `ILSPY_CMD=/absolute/path/to/ilspycmd`, or ensure `ilspycmd` is on PATH. If missing, the tool attempts a local install into `./tools`.
 - How to pin an npx version?
-  - `npx -y -p @iffrce/mcp-dotnetdc@0.1.3 -- mcp-dotnetdc`
+  - `npx -y -p @iffrce/mcp-dotnetdc@0.1.4 -- mcp-dotnetdc`
 
 ## Troubleshooting
 
