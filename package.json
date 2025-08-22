@@ -1,0 +1,58 @@
+{
+  "name": "@iffrce/mcp-dotnetdc",
+  "version": "0.1.0",
+  "description": "Model Context Protocol (MCP) server for .NET decompilation",
+  "main": "index.js",
+  "type": "module",
+  "bin": {
+    "mcp-dotnetdc": "index.js"
+  },
+  "files": [
+    "index.js",
+    "constants.js",
+    "utils.js",
+    "cache.js",
+    "server.js",
+    "decompiler.js",
+    "ilspy.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js",
+    "lint": "eslint index.js",
+    "lint:fix": "eslint --fix index.js",
+    "format": "prettier --write index.js"
+  },
+  "keywords": [
+    "mcp",
+    ".net",
+    "decompiler",
+    "ilspy",
+    "ilspycmd"
+  ],
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iffrce/mcp-dotnetdc.git"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.11.4",
+    "yargs": "^17.7.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.27.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-prettier": "^5.4.0",
+    "prettier": "^3.5.3"
+  }
+}
