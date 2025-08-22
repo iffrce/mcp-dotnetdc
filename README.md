@@ -195,7 +195,7 @@ mcp-dotnetdc
 - How to specify the ilspycmd path?
   - Set `ILSPY_CMD=/absolute/path/to/ilspycmd`, or ensure `ilspycmd` is on PATH. If missing, the tool attempts a local install into `./tools`.
 - How to pin an npx version?
-  - `npx -y -p @iffrce/mcp-dotnetdc@0.1.0 -- mcp-dotnetdc`
+  - `npx -y -p @iffrce/mcp-dotnetdc@0.1.2 -- mcp-dotnetdc`
 
 ## Troubleshooting
 
