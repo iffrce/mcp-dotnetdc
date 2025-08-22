@@ -28,8 +28,9 @@ async function persistIlspyEnv(resolvedPath) {
     if (!resolvedPath) return;
     // Set for current process
     process.env.ILSPY_CMD = resolvedPath;
-
-    const envFile = path.join(process.cwd(), '.env');
+    const envDir = path.join(process.cwd(), '.mcp-dotnetdc');
+    const envFile = path.join(envDir, '.env');
+    try { await fs.mkdir(envDir, { recursive: true }); } catch {}
     let lines = [];
     try {
       const content = await fs.readFile(envFile, 'utf8');
@@ -60,7 +61,7 @@ export async function resolveIlspycmd() {
   if (envPath && await exists(envPath)) { return envPath; }
 
   // 2) project local tool under ./tools
-  const toolsDir = path.join(process.cwd(), 'tools');
+  const toolsDir = path.join(process.cwd(), '.mcp-dotnetdc', 'tools');
   const localBin = path.join(toolsDir, isWindows() ? 'ilspycmd.exe' : 'ilspycmd');
   if (await exists(localBin)) { return localBin; }
 

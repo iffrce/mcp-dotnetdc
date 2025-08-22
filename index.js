@@ -1,6 +1,17 @@
 #!/usr/bin/env node
 
+import * as path from 'path';
+import * as fs from 'fs/promises';
 import 'dotenv/config';
+// Additionally load ./.mcp-dotnetdc/.env if present
+try {
+  const extraEnv = path.join(process.cwd(), '.mcp-dotnetdc', '.env');
+  const content = await fs.readFile(extraEnv, 'utf8');
+  for (const line of content.split(/\r?\n/)) {
+    const m = /^(\w+)=(.*)$/.exec(line.trim());
+    if (m) process.env[m[1]] = m[2];
+  }
+} catch {}
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import * as os from 'os';
@@ -97,7 +108,7 @@ class DecompilerService {
         await execPromise(cmd);
       } catch (err) {
         throw new Error(
-          `ilspycmd not available or failed to run. Please install .NET SDK and ilspycmd (dotnet tool install -g ilspycmd), then re-run this MCP tool. Do not call ilspycmd directly. Detail: ${err.message}`
+          `ilspycmd not available or failed to run. Please install .NET SDK8.0 and ilspycmd (dotnet tool install -g ilspycmd), then re-run this MCP tool. Do not call ilspycmd directly. Detail: ${err.message}`
         );
       }
 
