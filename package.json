@@ -1,6 +1,6 @@
 {
   "name": "@iffrce/mcp-dotnetdc",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Model Context Protocol (MCP) server for .NET decompilation",
   "main": "index.js",
   "type": "module",
