@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import 'dotenv/config';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import * as os from 'os';

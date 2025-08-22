@@ -152,6 +152,18 @@ mcp-dotnetdc
 - `MAX_FILES`: Max number of output files, default 5000
 - `MAX_BYTES`: Max total output bytes, default 50MB
 
+### .env support
+
+From v0.1.3, the server loads environment variables from a `.env` file at process startup via `dotenv`.
+
+Example `.env`:
+
+```
+ILSPY_CMD=/Users/you/.dotnet/tools/ilspycmd
+CACHE_TTL_MS=10000
+MAX_CONCURRENCY=4
+```
+
 ## Cursor MCP config examples (.cursor/mcp.json)
 
 ```json
@@ -195,7 +207,7 @@ mcp-dotnetdc
 - How to specify the ilspycmd path?
   - Set `ILSPY_CMD=/absolute/path/to/ilspycmd`, or ensure `ilspycmd` is on PATH. If missing, the tool attempts a local install into `./tools`.
 - How to pin an npx version?
-  - `npx -y -p @iffrce/mcp-dotnetdc@0.1.2 -- mcp-dotnetdc`
+  - `npx -y -p @iffrce/mcp-dotnetdc@0.1.3 -- mcp-dotnetdc`
 
 ## Troubleshooting
 

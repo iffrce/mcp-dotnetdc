@@ -2,7 +2,7 @@ import * as os from 'os';
 import * as path from 'path';
 
 export const SERVER_NAME = 'dotnetdc';
-export const PACKAGE_VERSION = '0.1.2';
+export const PACKAGE_VERSION = '0.1.3';
 
 export const CACHE_TTL_MS = Number(process.env.CACHE_TTL_MS ?? '5000');
 export const MAX_CONCURRENCY = Number(process.env.MAX_CONCURRENCY ?? '2');
