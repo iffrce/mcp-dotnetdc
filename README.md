@@ -99,6 +99,29 @@ mcp-dotnetdc
 
 ## MCP Tools
 
+### decompile-dotnet-directory
+
+- `rootDir` (required): Absolute path to a directory. The tool will recursively find all `.dll`/`.exe` and decompile them.
+- `includeIL` (optional): Include `.il` output alongside `.cs` (default false).
+
+Response JSON includes:
+
+- `files`: array of `{ path, content }` where `path` is the relative path preserving original assembly-relative layout, suitable for saving to disk.
+- `tree`: a directory tree object listing folders/files to allow reconstructing the structure.
+- `stats`: `{ assemblies, files, bytes }` and limits info.
+
+### decompile-dotnet-directory-to-dir
+
+- `rootDir` (required): Absolute path to a directory. The tool will recursively find all `.dll`/`.exe` and decompile them.
+- `outputDir` (required): Target directory to write decompiled outputs, preserving structure per-assembly.
+- `includeIL` (optional): Include `.il` output alongside `.cs` (default false).
+
+Response JSON includes:
+
+- `files`: string array of relative file paths written under `outputDir`.
+- `tree`: a directory tree object rooted at `outputDir`.
+- `stats`: `{ assemblies, files, bytes }` and limits info.
+
 ### decompile-dotnet-assembly
 
 - `assemblyPath` (required): Absolute path to .dll or .exe

@@ -36,6 +36,200 @@ const { maybeCached } = createInMemoryCache(CACHE_TTL_MS);
 const runExec = createExecLimiter(withConcurrencyLimit);
 
 class DecompilerService {
+  async decompileDotnetDirectory(rootDir, { includeIL = false } = {}) {
+    const execPromise = promisify(exec);
+    const results = [];
+    let totalBytes = 0;
+    let totalFiles = 0;
+    const skipped = [];
+    const assemblies = [];
+    try {
+      const stat = await fs.stat(rootDir);
+      if (!stat.isDirectory()) throw new Error('rootDir is not a directory');
+
+      // collect assemblies
+      async function collectAssemblies(dir) {
+        const entries = await fs.readdir(dir, { withFileTypes: true });
+        for (const entry of entries) {
+          const full = path.join(dir, entry.name);
+          if (entry.isDirectory()) {
+            await collectAssemblies(full);
+          } else if (entry.isFile()) {
+            const lower = entry.name.toLowerCase();
+            if (lower.endsWith('.dll') || lower.endsWith('.exe')) {
+              assemblies.push(full);
+            }
+          }
+        }
+      }
+      await collectAssemblies(rootDir);
+
+      if (assemblies.length === 0) {
+        return { files: [], tree: this.buildFileTree(path.basename(rootDir) || '.', []), stats: { assemblies: 0, files: 0, bytes: 0 } };
+      }
+
+      const ilspy = await resolveIlspycmd();
+
+      for (const asmPath of assemblies) {
+        const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dotnetdc-dir-'));
+        try {
+          // copy pdb if present
+          try {
+            const pdb = asmPath.replace(/\.(dll|exe)$/i, '.pdb');
+            const pdbStat = await fs.stat(pdb);
+            if (pdbStat.isFile()) {
+              await fs.copyFile(pdb, path.join(tempDir, path.basename(pdb)));
+            }
+          } catch {}
+
+          const args = [];
+          args.push(`-o "${tempDir}"`);
+          const cmd = `${ilspy} ${args.join(' ')} "${asmPath}"`;
+          try {
+            await execPromise(cmd);
+          } catch (err) {
+            throw new Error(`ilspycmd failed on ${asmPath}: ${err.message}`);
+          }
+
+          // collect output files from tempDir
+          const produced = [];
+          async function collectOut(dir) {
+            const entries = await fs.readdir(dir, { withFileTypes: true });
+            for (const entry of entries) {
+              const full = path.join(dir, entry.name);
+              if (entry.isDirectory()) {
+                await collectOut(full);
+              } else if (entry.isFile()) {
+                const lower = entry.name.toLowerCase();
+                if (lower.endsWith('.cs') || (includeIL && lower.endsWith('.il'))) {
+                  produced.push(full);
+                }
+              }
+            }
+          }
+          await collectOut(tempDir);
+
+          const asmRel = path.relative(rootDir, asmPath);
+          const asmBase = path.join(path.dirname(asmRel), path.basename(asmRel, path.extname(asmRel)));
+
+          for (const f of produced) {
+            const relFromTemp = path.relative(tempDir, f);
+            const outRel = path.join(asmBase, relFromTemp);
+            const content = await fs.readFile(f, 'utf8');
+            totalFiles++;
+            totalBytes += content.length;
+            if (totalFiles > MAX_FILES) throw new Error(`Output too large: ${totalFiles} files exceeds limit ${MAX_FILES}`);
+            if (totalBytes > MAX_BYTES) throw new Error(`Output too large: ${totalBytes} bytes exceeds limit ${MAX_BYTES}`);
+            results.push({ path: outRel.replace(/\\/g, '/'), content });
+          }
+        } catch (err) {
+          skipped.push({ assembly: asmPath, reason: err.message || String(err) });
+          // continue with next assembly
+        } finally {
+          try { await fs.rm(tempDir, { recursive: true, force: true }); } catch {}
+        }
+      }
+
+      const tree = this.buildFileTree(path.basename(rootDir) || '.', results.map(r => r.path));
+      return { files: results, tree, stats: { assemblies: assemblies.length, files: totalFiles, bytes: totalBytes }, skipped };
+    } catch (error) {
+      throw new Error(`Failed to decompile directory: ${error.message}`);
+    }
+  }
+
+  async decompileDotnetDirectoryToDir(rootDir, outputDir, { includeIL = false } = {}) {
+    const execPromise = promisify(exec);
+    const written = [];
+    let totalBytes = 0;
+    let totalFiles = 0;
+    const skipped = [];
+    const assemblies = [];
+    try {
+      const stat = await fs.stat(rootDir);
+      if (!stat.isDirectory()) throw new Error('rootDir is not a directory');
+      await fs.mkdir(outputDir, { recursive: true });
+
+      async function collectAssemblies(dir) {
+        const entries = await fs.readdir(dir, { withFileTypes: true });
+        for (const entry of entries) {
+          const full = path.join(dir, entry.name);
+          if (entry.isDirectory()) {
+            await collectAssemblies(full);
+          } else if (entry.isFile()) {
+            const lower = entry.name.toLowerCase();
+            if (lower.endsWith('.dll') || lower.endsWith('.exe')) assemblies.push(full);
+          }
+        }
+      }
+      await collectAssemblies(rootDir);
+
+      if (assemblies.length === 0) {
+        const tree = this.buildFileTree(outputDir, []);
+        return { files: [], tree, stats: { assemblies: 0, files: 0, bytes: 0 } };
+      }
+
+      const ilspy = await resolveIlspycmd();
+      for (const asmPath of assemblies) {
+        const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dotnetdc-dir-'));
+        try {
+          // copy pdb if exists
+          try {
+            const pdb = asmPath.replace(/\.(dll|exe)$/i, '.pdb');
+            const s = await fs.stat(pdb);
+            if (s.isFile()) await fs.copyFile(pdb, path.join(tempDir, path.basename(pdb)));
+          } catch {}
+
+          const args = [];
+          args.push(`-o "${tempDir}"`);
+          const cmd = `${ilspy} ${args.join(' ')} "${asmPath}"`;
+          try {
+            await execPromise(cmd);
+          } catch (err) {
+            throw new Error(`ilspycmd failed on ${asmPath}: ${err.message}`);
+          }
+
+          const produced = [];
+          async function collectOut(dir) {
+            const entries = await fs.readdir(dir, { withFileTypes: true });
+            for (const entry of entries) {
+              const full = path.join(dir, entry.name);
+              if (entry.isDirectory()) await collectOut(full);
+              else if (entry.isFile()) {
+                const lower = entry.name.toLowerCase();
+                if (lower.endsWith('.cs') || (includeIL && lower.endsWith('.il'))) produced.push(full);
+              }
+            }
+          }
+          await collectOut(tempDir);
+
+          const asmRel = path.relative(rootDir, asmPath);
+          const asmBase = path.join(path.dirname(asmRel), path.basename(asmRel, path.extname(asmRel)));
+
+          for (const f of produced) {
+            const relFromTemp = path.relative(tempDir, f);
+            const outRel = path.join(asmBase, relFromTemp).replace(/\\/g, '/');
+            const target = path.join(outputDir, outRel);
+            const content = await fs.readFile(f, 'utf8');
+            totalFiles++;
+            totalBytes += content.length;
+            if (totalFiles > MAX_FILES) throw new Error(`Output too large: ${totalFiles} files exceeds limit ${MAX_FILES}`);
+            if (totalBytes > MAX_BYTES) throw new Error(`Output too large: ${totalBytes} bytes exceeds limit ${MAX_BYTES}`);
+            await this._writeFileIfChanged(target, content, written, outputDir);
+          }
+        } catch (err) {
+          skipped.push({ assembly: asmPath, reason: err.message || String(err) });
+          // continue next assembly
+        } finally {
+          try { await fs.rm(tempDir, { recursive: true, force: true }); } catch {}
+        }
+      }
+
+      const tree = decompilerService.buildFileTree(outputDir, written);
+      return { files: written.slice().sort(), tree, stats: { assemblies: assemblies.length, files: totalFiles, bytes: totalBytes }, skipped };
+    } catch (error) {
+      throw new Error(`Failed to decompile directory to dir: ${error.message}`);
+    }
+  }
   async decompileDotnetAssembly(assemblyPath, { typeName = null, language = null } = {}) {
     const execPromise = promisify(exec);
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dotnetdc-'));
@@ -418,6 +612,31 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: [
       {
+        name: 'decompile-dotnet-directory',
+        description: 'Recursively decompile all .NET assemblies under a directory and return files with relative paths.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            rootDir: { type: 'string', description: 'Absolute path to the root directory to scan' },
+            includeIL: { type: 'boolean', description: 'Include .il files in addition to .cs (default: false)' }
+          },
+          required: ['rootDir']
+        }
+      },
+      {
+        name: 'decompile-dotnet-directory-to-dir',
+        description: 'Recursively decompile all .NET assemblies under a directory and write outputs to outputDir preserving structure.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            rootDir: { type: 'string', description: 'Absolute path to the root directory to scan' },
+            outputDir: { type: 'string', description: 'Directory to write files (will be created)' },
+            includeIL: { type: 'boolean', description: 'Include .il files in addition to .cs (default: false)' }
+          },
+          required: ['rootDir', 'outputDir']
+        }
+      },
+      {
         name: 'decompile-dotnet-assembly',
         description: 'Decompiles a .NET assembly (.dll/.exe). Optionally target a specific type.',
         inputSchema: {
@@ -535,6 +754,48 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
   const { name: tool, arguments: args } = request.params;
 
   switch (tool) {
+    case 'decompile-dotnet-directory-to-dir': {
+      const { rootDir, outputDir, includeIL = false } = args;
+      if (!rootDir || !outputDir) {
+        return { content: [{ type: 'text', text: 'Error: Missing rootDir or outputDir parameter' }] };
+      }
+      try {
+        const { files, tree, stats } = await maybeCached('decompileDirToDir', { rootDir, outputDir, includeIL }, () =>
+          decompilerService.decompileDotnetDirectoryToDir(rootDir, outputDir, { includeIL })
+        );
+        const summary = `Wrote ${stats.files} files from ${stats.assemblies} assemblies to ${outputDir}`;
+        return {
+          content: [
+            { type: 'text', text: summary },
+            { type: 'json', data: { outputDir, files, tree, stats: { ...stats, cacheRoot: CACHE_ROOT, maxFiles: MAX_FILES, maxBytes: MAX_BYTES } } }
+          ]
+        };
+      } catch (error) {
+        return { content: [{ type: 'text', text: `Error: ${error.message}` }] };
+      }
+    }
+
+    case 'decompile-dotnet-directory': {
+      const { rootDir, includeIL = false } = args;
+      if (!rootDir) {
+        return { content: [{ type: 'text', text: 'Error: Missing rootDir parameter' }] };
+      }
+      try {
+        const { files, tree, stats } = await maybeCached('decompileDir', { rootDir, includeIL }, () =>
+          decompilerService.decompileDotnetDirectory(rootDir, { includeIL })
+        );
+        const summary = `Decompiled ${stats.assemblies} assemblies -> ${stats.files} files`;
+        return {
+          content: [
+            { type: 'text', text: summary },
+            { type: 'json', data: { rootDir, files, tree, stats: { ...stats, cacheRoot: CACHE_ROOT, maxFiles: MAX_FILES, maxBytes: MAX_BYTES } } }
+          ]
+        };
+      } catch (error) {
+        return { content: [{ type: 'text', text: `Error: ${error.message}` }] };
+      }
+    }
+
     case 'decompile-dotnet-assembly': {
       const { assemblyPath, typeName = null, language = null } = args;
       if (!assemblyPath) {
